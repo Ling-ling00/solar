@@ -1,0 +1,7 @@
+setup.py
+solar/__init__.py
+solar/dummy_module.py
+solar.egg-info/PKG-INFO
+solar.egg-info/SOURCES.txt
+solar.egg-info/dependency_links.txt
+solar.egg-info/top_level.txt

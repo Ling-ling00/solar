@@ -1,0 +1,12 @@
+/home/ponwalai/solar_ws/build/solar/CMakeFiles/uninstall.dir
+/home/ponwalai/solar_ws/build/solar/CMakeFiles/solar_uninstall.dir
+/home/ponwalai/solar_ws/build/solar/CMakeFiles/ament_cmake_python_copy_solar.dir
+/home/ponwalai/solar_ws/build/solar/CMakeFiles/ament_cmake_python_build_solar_egg.dir
+/home/ponwalai/solar_ws/build/solar/CMakeFiles/cpp_node_test.dir
+/home/ponwalai/solar_ws/build/solar/CMakeFiles/test.dir
+/home/ponwalai/solar_ws/build/solar/CMakeFiles/edit_cache.dir
+/home/ponwalai/solar_ws/build/solar/CMakeFiles/rebuild_cache.dir
+/home/ponwalai/solar_ws/build/solar/CMakeFiles/list_install_components.dir
+/home/ponwalai/solar_ws/build/solar/CMakeFiles/install.dir
+/home/ponwalai/solar_ws/build/solar/CMakeFiles/install/local.dir
+/home/ponwalai/solar_ws/build/solar/CMakeFiles/install/strip.dir
