@@ -3,8 +3,6 @@
 
 ## LIDAR
 LIDAR C1 package from https://github.com/Slamtec/sllidar_ros2.git
-
-ขั้นตอนการใช้งาน
 1. Create udev rules for rplidar
 ```bash
 sudo chmod 777 /dev/ttyUSB0
