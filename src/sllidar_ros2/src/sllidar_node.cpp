@@ -66,6 +66,18 @@ class SLlidarNode : public rclcpp::Node
   private:    
     void init_param()
     {
+        // -------------------------------------------------------------
+        this->declare_parameter<float>("angle_min", 360.0f);
+        this->declare_parameter<float>("angle_max", 0.0f);
+
+        float angle_min, angle_max;
+        this->get_parameter_or<float>("angle_min", angle_min);
+        this->get_parameter_or<float>("angle_max", angle_max);
+
+        // angle_min = DEG2RAD(angle_min);
+        // angle_max = DEG2RAD(angle_max);
+
+        // -------------------------------------------------------------
         this->declare_parameter<std::string>("channel_type","serial");
         this->declare_parameter<std::string>("tcp_ip", "192.168.0.7");
         this->declare_parameter<int>("tcp_port", 20108);
