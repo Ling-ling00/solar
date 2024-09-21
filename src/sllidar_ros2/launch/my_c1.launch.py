@@ -20,8 +20,8 @@ def generate_launch_description():
     scan_mode = LaunchConfiguration('scan_mode', default='Standard')
     
     # New angle parameters
-    angle_min = LaunchConfiguration('angle_min', default='270.0')  # Default is 0 degrees
-    angle_max = LaunchConfiguration('angle_max', default='90.0')  # Default is 180 degrees
+    angle_min = LaunchConfiguration('angle_min', default='0.0')  # Default is 0 degrees
+    angle_max = LaunchConfiguration('angle_max', default='180.0')  # Default is 180 degrees
 
     rviz_config_dir = os.path.join(
         get_package_share_directory('sllidar_ros2'),
