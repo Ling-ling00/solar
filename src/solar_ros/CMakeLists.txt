@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(solar)
+project(solar_ros)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -29,6 +29,10 @@ ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
   scripts/dummy_script.py
   scripts/lidar_read.py
+  scripts/lidar_read_sim.py
+  scripts/robot_control.py
+  scripts/mqtt2ros.py
+  scripts/drive.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -49,6 +53,7 @@ install(TARGETS
 ################ INSTALL LAUNCH, ETC #################
 install(DIRECTORY
   # add directories here
+  launch
   DESTINATION share/${PROJECT_NAME})
 
 ament_package()
