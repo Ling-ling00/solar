@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from solar_ros.dummy_module import dummy_function, dummy_var
+# from solar_ros.dummy_module import dummy_function, dummy_var
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
@@ -31,10 +31,11 @@ class OdriveNode(Node):
     
     def Odrive_TorqueControl(self):
         self.odrv_L.axis0.controller.config.control_mode = ControlMode.TORQUE_CONTROL
-        # odrv.axis0.controller.config.torque_ramp_rate = 40
+        self.odrv_L.axis0.controller.config.torque_ramp_rate = 10
         self.odrv_L.axis0.controller.config.input_mode = InputMode.PASSTHROUGH
 
         self.odrv_R.axis0.controller.config.control_mode = ControlMode.TORQUE_CONTROL
+        self.odrv_R.axis0.controller.config.torque_ramp_rate = 10
         self.odrv_R.axis0.controller.config.input_mode = InputMode.PASSTHROUGH
         
     def initial_odrive(self):
@@ -53,20 +54,27 @@ class OdriveNode(Node):
         while self.odrv_R.axis0.current_state != AXIS_STATE_CLOSED_LOOP_CONTROL:
             self.odrv_R.clear_errors()
             self.odrv_R.axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+            self.odrv_R.axis0.controller.config.spinout_mechanical_power_threshold = -15
             time.sleep(0.01)    
         
         time.sleep(1)
-        self.Odrive_VelControl()
-        # self.Odrive_TorqueControl()
+        # self.Odrive_VelControl()
+        self.odrv_L.axis0.controller.config.spinout_electrical_power_threshold = 15
+        self.odrv_L.axis0.controller.config.spinout_mechanical_power_threshold = -15
+        self.odrv_R.axis0.controller.config.spinout_electrical_power_threshold = 15
+        self.odrv_R.axis0.controller.config.spinout_mechanical_power_threshold = -15
+        self.Odrive_TorqueControl()            
 
         print("Finished setup Odrive")
+        print(self.odrv_L.axis0.controller.config.spinout_mechanical_power_threshold)
+        print(self.odrv_R.axis0.controller.config.spinout_mechanical_power_threshold)
         time.sleep(1)
         
     def odrive_loop(self):
         # self.vx_speed = self.accl_vel/(2.0*math.pi) # rps
         # self.odrv.axis0.controller.config.control_mode = ControlMode.VELOCITY_CONTROL
-        self.odrv_L.axis0.controller.input_vel = self.left_speed
-        self.odrv_R.axis0.controller.input_vel = -self.right_speed
+        self.odrv_L.axis0.controller.input_torque = self.left_speed
+        self.odrv_R.axis0.controller.input_torque = -self.right_speed
         print(odrive.utils.dump_errors(self.odrv_L))
         print(odrive.utils.dump_errors(self.odrv_R))
 

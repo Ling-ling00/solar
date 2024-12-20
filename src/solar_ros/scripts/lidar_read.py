@@ -21,11 +21,13 @@ class LidarReadNode(Node):
         self.create_timer(0.01, self.timer_callback)
 
         #variable
-        self.max_speed = 6.0
-        self.kp = [6.0, 220.0]
+        self.max_speed = 2.0
+        self.direction = -1
+        self.kp = [2.0, 70.0]
         self.stack_pos = []
         self.deg = [270, 90]
-        self.dh = [0.24, 0.43]
+        # self.dh = [0.23, 0.47]
+        self.dh = [0.405, 0.24]
         self.prev_distance = [0,0]
         self.side = 'none'
         self.servo_state = 0
@@ -83,9 +85,9 @@ class LidarReadNode(Node):
         else:
             v = [0.0, 0.0]
 
-        msg.data = [v[0], v[1]]
+        msg.data = [v[0]*self.direction, v[1]*self.direction]
         self.cmd_vel_publisher.publish(msg)
-        self.get_logger().info(f'Publishing speed data =  {v}')
+        self.get_logger().info(f'Publishing speed data =  {msg.data}')
 
 
     def publish_lidar_data(self, msg:LaserScan, deg):
@@ -134,23 +136,26 @@ class LidarReadNode(Node):
             left = len(dy)//2 -1 - i
             right = len(dy)//2 + i
 
-            if min(range_left) < dy[left] < max(range_left):
-                if min(range_left) == range_left[0]:
-                    range_left[1] = dy[left] + 0.005
+            if dy[left] != np.inf:
+                if min(range_left) < dy[left] < max(range_left):
+                    if min(range_left) == range_left[0]:
+                        range_left[1] = dy[left] + 0.01
+                    else:
+                        range_left[1] = dy[left] - 0.01
                 else:
-                    range_left[1] = dy[left] - 0.005
-            else:
-                if distance[0] == 0:
-                    distance[0] = dx[left]
+                    if distance[0] == 0:
+                        distance[0] = dx[left]
 
-            if min(range_right) < dy[right] < max(range_right):
-                if min(range_right) == range_right[1]:
-                    range_right[0] = dy[right] + 0.005
+            if dy[right] != np.inf:
+                if min(range_right) < dy[right] < max(range_right):
+                    if min(range_right) == range_right[1]:
+                        range_right[0] = dy[right] + 0.01
+                    else:
+                        range_right[0] = dy[right] - 0.01
                 else:
-                    range_right[0] = dy[right] - 0.005
-            else:
-                if distance[1] == 0:
-                    distance[1] = dx[right]
+                    if distance[1] == 0:
+                        distance[1] = dx[right]
+
             if distance[0] != 0 and distance[1] != 0:
                 break
         self.get_logger().info(f'distance data =  {distance}')
