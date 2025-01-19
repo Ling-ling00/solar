@@ -1,0 +1,17 @@
+../Core/Src/main.c:129:5:main	8	static
+../Core/Src/main.c:217:6:SystemClock_Config	88	static
+../Core/Src/main.c:265:13:MX_IWDG_Init	8	static
+../Core/Src/main.c:294:13:MX_LPUART1_UART_Init	8	static
+../Core/Src/main.c:341:13:MX_TIM2_Init	64	static
+../Core/Src/main.c:400:13:MX_TIM3_Init	64	static
+../Core/Src/main.c:461:13:MX_DMA_Init	16	static
+../Core/Src/main.c:483:13:MX_GPIO_Init	48	static
+../Core/Src/main.c:546:6:timer_callback	24	static
+../Core/Src/main.c:556:6:BrusheMotorControlled	8	static
+../Core/Src/main.c:568:6:BrushUpDownControlled	8	static
+../Core/Src/main.c:585:6:BrushUpDownMode	48	static
+../Core/Src/main.c:606:6:subscription_callback_servo	24	static
+../Core/Src/main.c:613:6:subscription_callback_Brush	24	static
+../Core/Src/main.c:628:6:StartDefaultTask	216	static
+../Core/Src/main.c:701:6:HAL_TIM_PeriodElapsedCallback	16	static
+../Core/Src/main.c:718:6:Error_Handler	4	static,ignoring_inline_asm

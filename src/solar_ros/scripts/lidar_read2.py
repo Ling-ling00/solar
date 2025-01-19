@@ -22,7 +22,6 @@ class LidarReadNode(Node):
 
         #variable
         self.max_speed = 2.0
-        self.direction = 1
         self.kp = [2.0, 70.0]
         self.stack_pos = []
         self.deg = [270, 90]
@@ -85,9 +84,9 @@ class LidarReadNode(Node):
         else:
             v = [0.0, 0.0]
 
-        msg.data = [v[0]*self.direction, v[1]*self.direction]
+        msg.data = [v[0], v[1]]
         self.cmd_vel_publisher.publish(msg)
-        self.get_logger().info(f'Publishing speed data =  {msg.data}')
+        self.get_logger().info(f'Publishing speed data =  {v}')
 
 
     def publish_lidar_data(self, msg:LaserScan, deg):
@@ -101,17 +100,11 @@ class LidarReadNode(Node):
     def cal_something(self,msg:LaserScan):
         self.stack_pos = []
         self.dx = []
-        self.dy = []
-        if self.side == 1:
-            for i in range(len(msg)):
-                self.stack_pos.insert(0, round(msg[i],2))
-                self.dx.insert(0, round(np.sin(np.deg2rad(i*0.5))*msg[i],4))
-                self.dy.insert(0, round(np.cos(np.deg2rad(i*0.5))*msg[i],4))
-        else:        
-            for i in range(len(msg)):
-                self.stack_pos.append(round(msg[i],2))
-                self.dx.append(round(np.sin(np.deg2rad(i*0.5))*msg[i],4))
-                self.dy.append(round(np.cos(np.deg2rad(i*0.5))*msg[i],4))
+        self.dy = []      
+        for i in range(len(msg)):
+            self.stack_pos.append(round(msg[i],2))
+            self.dx.append(round(np.sin(np.deg2rad(i*0.5))*msg[i],5))
+            self.dy.append(round(np.cos(np.deg2rad(i*0.5))*msg[i],5))
         
     def lim_deg_pos(self, first, last):
         self.lim_deg = []
@@ -135,34 +128,47 @@ class LidarReadNode(Node):
 
     def distance_check(self, dy, dx, dh):
         distance = [0,0]
-        range_left = [dh[0], dh[1]]
-        range_right = [dh[0], dh[1]]
+        switch__l = 0
+        switch__r = 0
+        range_left = [dy[len(dy)//2 -1]-0.02, dy[len(dy)//2 -1]+0.02]
+        range_right = [dy[len(dy)//2]-0.02, dy[len(dy)//2]+0.02]
+        a = 1
+        while(abs(range_left[0])==np.inf or abs(range_right[0])==np.inf):
+            if abs(range_left[0])==np.inf:
+                range_left = [dy[len(dy)//2 -1 - a]-0.02, dy[len(dy)//2 -1 - a]+0.02]
+            if abs(range_right[0])==np.inf:
+                range_right = [dy[len(dy)//2 + a]-0.02, dy[len(dy)//2 + a]+0.02]
+            a+=1
+        stack_left = 1
+        stack_right = 1
 
         for i in range(len(dy)//2):
             left = len(dy)//2 -1 - i
             right = len(dy)//2 + i
 
-
-            if dy[left] != np.inf:
-                if min(range_left) < dy[left] < max(range_left):
-                    if min(range_left) == range_left[0]:
-                        range_left[1] = dy[left] + 0.01
-                    else:
-                        range_left[1] = dy[left] - 0.01
+            if abs(dy[left]) != np.inf:
+                if min(range_left) <= dy[left] <= max(range_left):
+                    range_left = [dy[left]-(0.02*stack_left), dy[left]+(0.02*stack_left)]
+                    stack_left = 1
                 else:
-                    if distance[0] == 0:
-                        distance[0] = dx[left]
+                    if distance[0] == 0 and switch__l != 1:
+                        print(range_left, dy[left])
+                        distance[0] = dx[left+stack_left]
+                        switch__l = 1 
+                        print('left',dy[left], dy[left+stack_left], left)
+            else:
+                stack_left += 1
 
-            if dy[right] != np.inf:
-                if min(range_right) < dy[right] < max(range_right):
-                    if min(range_right) == range_right[1]:
-                        range_right[0] = dy[right] + 0.01
-                    else:
-                        range_right[0] = dy[right] - 0.01
-
+            if abs(dy[right]) != np.inf:
+                if min(range_right) <= dy[right] <= max(range_right):
+                    range_right = [dy[right]-(0.02*stack_right), dy[right]+(0.02*stack_right)]
+                    stack_right = 1
                 else:
                     if distance[1] == 0:
-                        distance[1] = dx[right]
+                        distance[1] = dx[right-stack_right]
+                        print('right',dy[right], dy[right-stack_right], right)
+            else:
+                stack_right += 1
 
             if distance[0] != 0 and distance[1] != 0:
                 break
@@ -179,17 +185,17 @@ class LidarReadNode(Node):
         self.brush_check(self.lim_dy, self.dh)
     
     def brush_check(self, dy, dh):
-        print("brush", dy[(len(dy)//2)-2:(len(dy)//2)+3]) 
-        print((dy[len(dy)//2] > max(dh) or dy[len(dy)//2] is None))
-        print((dy[len(dy)//2+1] > max(dh) or dy[len(dy)//2+1] is None))
-        print((dy[len(dy)//2-1] > max(dh) or dy[len(dy)//2-1] is None))
-        print((dy[len(dy)//2+2] > max(dh) or dy[len(dy)//2+2] is None))
-        print((dy[len(dy)//2-2] > max(dh) or dy[len(dy)//2-2] is None))
-        print((dy[len(dy)//2+2] > max(dh) or dy[len(dy)//2+3] is None))
-        print((dy[len(dy)//2-2] > max(dh) or dy[len(dy)//2-3] is None))
-        print((dy[len(dy)//2+2] > max(dh) or dy[len(dy)//2+4] is None))
-        print((dy[len(dy)//2-2] > max(dh) or dy[len(dy)//2-4] is None))
-        print(self.servo_state)
+        # print("brush", dy[(len(dy)//2)-2:(len(dy)//2)+3]) 
+        # print((dy[len(dy)//2] > max(dh) or dy[len(dy)//2] is None))
+        # print((dy[len(dy)//2+1] > max(dh) or dy[len(dy)//2+1] is None))
+        # print((dy[len(dy)//2-1] > max(dh) or dy[len(dy)//2-1] is None))
+        # print((dy[len(dy)//2+2] > max(dh) or dy[len(dy)//2+2] is None))
+        # print((dy[len(dy)//2-2] > max(dh) or dy[len(dy)//2-2] is None))
+        # print((dy[len(dy)//2+2] > max(dh) or dy[len(dy)//2+3] is None))
+        # print((dy[len(dy)//2-2] > max(dh) or dy[len(dy)//2-3] is None))
+        # print((dy[len(dy)//2+2] > max(dh) or dy[len(dy)//2+4] is None))
+        # print((dy[len(dy)//2-2] > max(dh) or dy[len(dy)//2-4] is None))
+        # print(self.servo_state)
         if ((dy[len(dy)//2] > max(dh) or dy[len(dy)//2] is None) and 
             (dy[(len(dy)//2)+1] > max(dh) or dy[(len(dy)//2)+1] is None) and 
             (dy[(len(dy)//2)-1] > max(dh) or dy[(len(dy)//2)-1] is None) and 
@@ -200,7 +206,7 @@ class LidarReadNode(Node):
             (dy[(len(dy)//2)+4] > max(dh) or dy[(len(dy)//2)+2] is None) and 
             (dy[(len(dy)//2)-4] > max(dh) or dy[(len(dy)//2)-2] is None) and
             self.servo_state == 0):
-            print("----------------------------------------------")
+            # print("----------------------------------------------")
             brush_msg = Int32()
             brush_msg.data = 1
             self.brush_publisher.publish(brush_msg)
