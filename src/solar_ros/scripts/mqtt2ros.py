@@ -2,7 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float32MultiArray,Int32
 import paho.mqtt.client as mqtt
 
 # Define the MQTT settings
@@ -10,6 +10,7 @@ BROKER = "broker.mqtt-dashboard.com"
 PORT = 1883
 CLIENT_ID = "ros2-mqtt-bridge"
 TOPIC_SUBSCRIBE = "test/topic/solar/fibo"
+TOPIC_PUB = "test/topic/solar/fibo_feedback"
 MQTT_USERNAME = ""  # Replace with actual username
 MQTT_PASSWORD = ""  # Replace with actual password
 
@@ -17,7 +18,12 @@ class mqtt2ros(Node):
     def __init__(self):
         super().__init__("mqtt2ros")
         self.publisher_ = self.create_publisher(Float32MultiArray, "/cmd_vel", 10)
+        self.publisher_B = self.create_publisher(Int32, "/cubemx_publisher_Brush", 10)
+        self.publisher_S = self.create_publisher(Int32, "/cubemx_publisher_servo", 10)
         self.get_logger().info("ROS 2 Node initialized, setting up MQTT client...")
+
+        self.create_subscription(Float32MultiArray, "/feedback_odr", self.feedback_odr_callback, 10)
+        
 
         # Initialize MQTT client
         self.mqtt_client = mqtt.Client(client_id=CLIENT_ID)
@@ -25,7 +31,7 @@ class mqtt2ros(Node):
         self.mqtt_client.on_connect = self.on_connect
         self.mqtt_client.on_message = self.on_message
 
-        # Connect to the MQTT broker
+        # Connect to the MQTT broker.+++++++++++++++++++++++++++++++++.0
         try:
             self.mqtt_client.connect(BROKER, PORT, 60)
             self.get_logger().info(f"Connected to MQTT broker at {BROKER}:{PORT}")
@@ -46,10 +52,38 @@ class mqtt2ros(Node):
 
         # Publish the message to the ROS 2 topic
         split_msg = mqtt_message.split()
-        ros_message = Float32MultiArray()
-        ros_message.data = [float(split_msg[0]), float(split_msg[1])]
-        self.publisher_.publish(ros_message)
-        self.get_logger().info(f"Republished to ROS topic: 'ros_topic'")
+
+        if int(split_msg[0]) == 9 :
+            ros_message = Float32MultiArray()
+            ros_message.data = [float(0), float([0])]
+            B_msg = Int32()
+            B_msg.data = int(0)
+            self.publisher_B.publish(B_msg)
+            self.publisher_.publish(ros_message)
+            S_msg = Int32()
+            S_msg.data = int(0)
+            self.publisher_S.publish(S_msg)
+
+        elif int(split_msg[0]) == 0 :
+            pass
+        elif int(split_msg[0]) == 1 :
+            ros_message = Float32MultiArray()
+            ros_message.data = [float(split_msg[1]), float(split_msg[2])]
+            B_msg = Int32()
+            B_msg.data = int(split_msg[3])
+            self.publisher_B.publish(B_msg)
+            self.publisher_.publish(ros_message)
+            S_msg = Int32()
+            S_msg.data = int(split_msg[4])
+            self.publisher_S.publish(S_msg)
+            self.get_logger().info(f"Republished to ROS topic: 'ros_topic'")
+
+    def feedback_odr_callback(self,msg:Float32MultiArray):
+        # print(msg.data)
+        temp = str(int(msg.data[0])) + " " + str(int(msg.data[1]))
+        self.mqtt_client.publish(TOPIC_PUB, temp)
+
+
 
 def main(args=None):
     rclpy.init(args=args)

@@ -34,13 +34,14 @@ class LidarReadNode(Node):
         self.side = 0
 
     def timer_callback(self):
-        if self.servo_state == 1 and self.servo_timecount < 500:
+        if self.servo_state == 1 and self.servo_timecount < 100:
             self.servo_timecount += 1
         elif self.servo_state == 1:
             self.servo_state = 0
             self.servo_timecount = 0
             brush_msg = Int32()
-            brush_msg.data = 0
+            brush_msg.data = 1
+            print("down")
             self.brush_publisher.publish(brush_msg)
 
 
@@ -86,8 +87,8 @@ class LidarReadNode(Node):
             v = [0.0, 0.0]
 
         msg.data = [v[0]*self.direction, v[1]*self.direction]
-        self.cmd_vel_publisher.publish(msg)
-        self.get_logger().info(f'Publishing speed data =  {msg.data}')
+        # self.cmd_vel_publisher.publish(msg)
+        # self.get_logger().info(f'Publishing speed data =  {msg.data}')
 
 
     def publish_lidar_data(self, msg:LaserScan, deg):
@@ -166,7 +167,7 @@ class LidarReadNode(Node):
 
             if distance[0] != 0 and distance[1] != 0:
                 break
-        self.get_logger().info(f'distance data =  {distance}')
+        # self.get_logger().info(f'distance data =  {distance}')
         return distance
             
     def lidar_callback(self, msg:LaserScan):
@@ -202,8 +203,9 @@ class LidarReadNode(Node):
             self.servo_state == 0):
             print("----------------------------------------------")
             brush_msg = Int32()
-            brush_msg.data = 1
+            brush_msg.data = 0
             self.brush_publisher.publish(brush_msg)
+            print("up")
             self.servo_state = 1
 
 
