@@ -57,6 +57,7 @@ class LidarReadNode(Node):
             error = distance[0] + distance[1]
             if abs(error) < 0.1:
                 # if solarcell in the middle
+                print("middle")
                 error = distance[0] - self.prev_distance[0]
                 #check if solarcell rotate
                 if abs(error) > 0.001:
@@ -75,6 +76,7 @@ class LidarReadNode(Node):
                     self.side = 'none'
             else:
                 v = [self.max_speed-(self.kp[0] * error), self.max_speed+(self.kp[0] * error)]
+                print("error = ", error)
                 self.side = 'none'
 
             #check limit real max speed = 1.5 * max_speed
@@ -167,7 +169,7 @@ class LidarReadNode(Node):
 
             if distance[0] != 0 and distance[1] != 0:
                 break
-        # self.get_logger().info(f'distance data =  {distance}')
+        self.get_logger().info(f'distance data =  {distance}')
         return distance
             
     def lidar_callback(self, msg:LaserScan):
@@ -180,17 +182,17 @@ class LidarReadNode(Node):
         self.brush_check(self.lim_dy, self.dh)
     
     def brush_check(self, dy, dh):
-        print("brush", dy[(len(dy)//2)-2:(len(dy)//2)+3]) 
-        print((dy[len(dy)//2] > max(dh) or dy[len(dy)//2] is None))
-        print((dy[len(dy)//2+1] > max(dh) or dy[len(dy)//2+1] is None))
-        print((dy[len(dy)//2-1] > max(dh) or dy[len(dy)//2-1] is None))
-        print((dy[len(dy)//2+2] > max(dh) or dy[len(dy)//2+2] is None))
-        print((dy[len(dy)//2-2] > max(dh) or dy[len(dy)//2-2] is None))
-        print((dy[len(dy)//2+2] > max(dh) or dy[len(dy)//2+3] is None))
-        print((dy[len(dy)//2-2] > max(dh) or dy[len(dy)//2-3] is None))
-        print((dy[len(dy)//2+2] > max(dh) or dy[len(dy)//2+4] is None))
-        print((dy[len(dy)//2-2] > max(dh) or dy[len(dy)//2-4] is None))
-        print(self.servo_state)
+        # print("brush", dy[(len(dy)//2)-2:(len(dy)//2)+3]) 
+        # print((dy[len(dy)//2] > max(dh) or dy[len(dy)//2] is None))
+        # print((dy[len(dy)//2+1] > max(dh) or dy[len(dy)//2+1] is None))
+        # print((dy[len(dy)//2-1] > max(dh) or dy[len(dy)//2-1] is None))
+        # print((dy[len(dy)//2+2] > max(dh) or dy[len(dy)//2+2] is None))
+        # print((dy[len(dy)//2-2] > max(dh) or dy[len(dy)//2-2] is None))
+        # print((dy[len(dy)//2+2] > max(dh) or dy[len(dy)//2+3] is None))
+        # print((dy[len(dy)//2-2] > max(dh) or dy[len(dy)//2-3] is None))
+        # print((dy[len(dy)//2+2] > max(dh) or dy[len(dy)//2+4] is None))
+        # print((dy[len(dy)//2-2] > max(dh) or dy[len(dy)//2-4] is None))
+        # print(self.servo_state)
         if ((dy[len(dy)//2] > max(dh) or dy[len(dy)//2] is None) and 
             (dy[(len(dy)//2)+1] > max(dh) or dy[(len(dy)//2)+1] is None) and 
             (dy[(len(dy)//2)-1] > max(dh) or dy[(len(dy)//2)-1] is None) and 

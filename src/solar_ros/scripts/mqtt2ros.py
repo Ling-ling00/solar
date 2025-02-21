@@ -4,6 +4,8 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray,Int32
 import paho.mqtt.client as mqtt
+import os
+import subprocess
 
 # Define the MQTT settings
 BROKER = "broker.mqtt-dashboard.com"
@@ -20,6 +22,7 @@ class mqtt2ros(Node):
         self.publisher_ = self.create_publisher(Float32MultiArray, "/cmd_vel", 10)
         self.publisher_B = self.create_publisher(Int32, "/cubemx_publisher_Brush", 10)
         self.publisher_S = self.create_publisher(Int32, "/cubemx_publisher_servo", 10)
+        self.publisher_L = self.create_publisher(Float32MultiArray, "/lidar_state", 10)
         self.get_logger().info("ROS 2 Node initialized, setting up MQTT client...")
 
         self.create_subscription(Float32MultiArray, "/feedback_odr", self.feedback_odr_callback, 10)
@@ -55,7 +58,7 @@ class mqtt2ros(Node):
 
         if int(split_msg[0]) == 9 :
             ros_message = Float32MultiArray()
-            ros_message.data = [float(0), float([0])]
+            ros_message.data = [float(0), float(0)]
             B_msg = Int32()
             B_msg.data = int(0)
             self.publisher_B.publish(B_msg)
@@ -63,6 +66,9 @@ class mqtt2ros(Node):
             S_msg = Int32()
             S_msg.data = int(0)
             self.publisher_S.publish(S_msg)
+            L_msg = Float32MultiArray()
+            L_msg.data = [float(0), float(0), float(0)]
+            self.publisher_L.publish(L_msg)
 
         elif int(split_msg[0]) == 0 :
             pass
@@ -76,13 +82,51 @@ class mqtt2ros(Node):
             S_msg = Int32()
             S_msg.data = int(split_msg[4])
             self.publisher_S.publish(S_msg)
+            L_msg = Float32MultiArray()
+            L_msg.data = [float(0), float(0), float(0)]
+            self.publisher_L.publish(L_msg)
             self.get_logger().info(f"Republished to ROS topic: 'ros_topic'")
+
+        elif int(split_msg[0]) == 2 : #### Reset 
+            self.get_logger().info("Reset command received. Closing other terminals and launching drive.sh.")
+            self.close_other_terminals()
+            self.launch_new_terminal()
+
+        elif int(split_msg[0]) == 3:
+            L_msg = Float32MultiArray()
+            L_msg.data = [float(1), float(split_msg[1]), float(split_msg[2])]
+            self.publisher_L.publish(L_msg)
 
     def feedback_odr_callback(self,msg:Float32MultiArray):
         # print(msg.data)
-        temp = str(int(msg.data[0])) + " " + str(int(msg.data[1]))
+        time = float(msg.data[2])
+        formatted_time = round(time, 2)
+        temp = str(int(msg.data[0])) + " " + str(int(msg.data[1])) + " "+ str(formatted_time)
         self.mqtt_client.publish(TOPIC_PUB, temp)
+    
+    def close_other_terminals(self):
+        try:
+            # Get the window ID of the current terminal
+            current_window_id = subprocess.check_output(['xdotool', 'getactivewindow']).strip()
 
+            # Get a list of all terminal window IDs (assuming gnome-terminal)
+            terminal_window_ids = subprocess.check_output(['xdotool', 'search', '--class', 'gnome-terminal']).split()
+
+            for window_id in terminal_window_ids:
+                if window_id != current_window_id:
+                    # Close the terminal window
+                    subprocess.call(['xdotool', 'windowclose', window_id])
+                    print(f"Closed terminal window ID: {window_id.decode()}")
+        except Exception as e:
+            print(f"Error closing terminal windows: {e}")
+
+    def launch_new_terminal(self):
+        try:
+            subprocess.Popen(['gnome-terminal', '--', 'bash', '-c', '/home/solar/drive.sh; exec bash'])
+            print("Launched new terminal with drive.sh.")
+        except Exception as e:
+            print(f"Failed to launch drive.sh: {e}")
+    
 
 
 def main(args=None):
