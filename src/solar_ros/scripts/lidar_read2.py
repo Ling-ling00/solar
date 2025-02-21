@@ -14,6 +14,7 @@ class LidarReadNode(Node):
         self.lim_pos_publisher = self.create_publisher(LaserScan, '/scan2', 10)
         self.brush_publisher = self.create_publisher(Int32, '/cubemx_publisher_servo', 10)
         self.cmd_vel_publisher = self.create_publisher(Float32MultiArray, '/cmd_vel', 10)
+        self.feedback_lidar_publisher = self.create_publisher(Int32, '/feedback_lidar', 10)
 
         #subscription
         self.create_subscription(LaserScan, "/scan", self.lidar_callback, 10)
@@ -31,8 +32,18 @@ class LidarReadNode(Node):
         self.servo_state = 0
         self.servo_timecount = 0
         self.side = 0
+        self.error_count = 0
 
     def timer_callback(self):
+        if self.error_count >= 500:
+            feedback_msg = Int32()
+            feedback_msg.data = 0
+            self.feedback_lidar_publisher.publish(feedback_msg)
+        else:
+            self.error_count += 1
+            feedback_msg = Int32()
+            feedback_msg.data = 1
+            self.feedback_lidar_publisher.publish(feedback_msg)
         if self.servo_state == 1 and self.servo_timecount < 500:
             self.servo_timecount += 1
         elif self.servo_state == 1:
@@ -176,6 +187,7 @@ class LidarReadNode(Node):
         return distance
             
     def lidar_callback(self, msg:LaserScan):
+        self.error_count = 0
         range = msg.ranges
         self.cal_something(range)
         self.lim_deg_pos(self.deg[0],self.deg[1])
