@@ -53,8 +53,6 @@ typedef StaticTask_t osStaticThreadDef_t;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-IWDG_HandleTypeDef hiwdg;
-
 UART_HandleTypeDef hlpuart1;
 DMA_HandleTypeDef hdma_lpuart1_tx;
 DMA_HandleTypeDef hdma_lpuart1_rx;
@@ -81,6 +79,9 @@ std_msgs__msg__Int32 msg_servo;
 rcl_subscription_t subscriber_Brush;
 std_msgs__msg__Int32 msg_Brush;
 
+rcl_publisher_t publisher;
+std_msgs__msg__Int32 msg_pub;
+
 rcl_timer_t timer;
 rclc_support_t support;
 rcl_allocator_t allocator;
@@ -92,6 +93,7 @@ int Brush;
 int Servo_switch = 0;
 int BrushUD_mode = 0;
 int prev_Servo = 0;
+uint64_t a = 0;
 
 PWM BrushMTR;
 PWM BrushUD;
@@ -102,7 +104,6 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_LPUART1_UART_Init(void);
-static void MX_IWDG_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 void StartDefaultTask(void *argument);
@@ -153,7 +154,6 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_LPUART1_UART_Init();
-  MX_IWDG_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
@@ -226,10 +226,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV4;
@@ -255,35 +254,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief IWDG Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_IWDG_Init(void)
-{
-
-  /* USER CODE BEGIN IWDG_Init 0 */
-
-  /* USER CODE END IWDG_Init 0 */
-
-  /* USER CODE BEGIN IWDG_Init 1 */
-
-  /* USER CODE END IWDG_Init 1 */
-  hiwdg.Instance = IWDG;
-  hiwdg.Init.Prescaler = IWDG_PRESCALER_4;
-  hiwdg.Init.Window = 4095;
-  hiwdg.Init.Reload = 2499;
-  if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN IWDG_Init 2 */
-
-  /* USER CODE END IWDG_Init 2 */
-
 }
 
 /**
@@ -546,10 +516,14 @@ void * microros_zero_allocate(size_t number_of_elements, size_t size_of_element,
 void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
 {
 	if (timer != NULL) {
-		HAL_IWDG_Refresh(&hiwdg);
 		BrusheMotorControlled();
 		BrushUpDownControlled();
 		BrushUpDownMode();
+	}
+	rcl_ret_t ret = rcl_publish(&publisher, &msg_pub, NULL);
+	if (ret != RCL_RET_OK)
+	{
+		NVIC_SystemReset();
 	}
 }
 
@@ -660,7 +634,7 @@ void StartDefaultTask(void *argument)
 		rclc_node_init_default(&node, "cubemx_node", "", &support);
 
 		// Create timer
-		rclc_timer_init_default(&timer, &support, RCL_MS_TO_NS(100), timer_callback);
+		rclc_timer_init_default(&timer, &support, RCL_MS_TO_NS(10), timer_callback);
 
 		// Create subscriber
 		rclc_subscription_init_default(
@@ -674,6 +648,15 @@ void StartDefaultTask(void *argument)
 			&node,
 			ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
 			"cubemx_publisher_Brush");
+
+		// create publisher
+		rclc_publisher_init_default(
+			&publisher,
+			&node,
+			ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+			"cubemx_publisher");
+
+		msg_pub.data = 0;
 
 		// Initialize the executor
 		executor = rclc_executor_get_zero_initialized_executor();
