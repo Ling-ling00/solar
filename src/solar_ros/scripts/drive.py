@@ -17,6 +17,7 @@ class OdriveNode(Node):
         self.initial_odrive()
         self.create_timer(0.01, self.odrive_loop)
         self.publisher_feedback = self.create_publisher(Float32MultiArray, "/feedback_odr", 10)
+        self.publisher_L = self.create_publisher(Float32MultiArray, "/lidar_state", 10)
         self.create_subscription(Float32MultiArray, "/cmd_vel", self.velo_callback, 10)
         self.left_speed = 0
         self.right_speed = 0
@@ -121,6 +122,9 @@ class OdriveNode(Node):
             self.odrv_R.axis0.controller.input_vel = 0.0
             self.right_speed = 0
             self.left_speed = 0
+            L_msg = Float32MultiArray()
+            L_msg.data = [float(0), float(0), float(0)]
+            self.publisher_L.publish(L_msg)
 
     def velo_callback(self, msg:Float32MultiArray):
         self.left_speed = msg.data[0]
