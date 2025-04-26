@@ -79,8 +79,14 @@ std_msgs__msg__Int32 msg_servo;
 rcl_subscription_t subscriber_Brush;
 std_msgs__msg__Int32 msg_Brush;
 
+rcl_subscription_t subscriber_Water;
+std_msgs__msg__Int32 msg_Water;
+
 rcl_publisher_t publisher;
 std_msgs__msg__Int32 msg_pub;
+
+rcl_publisher_t omron_publisher;
+std_msgs__msg__Int32 msg_Omron;
 
 rcl_timer_t timer;
 rclc_support_t support;
@@ -90,13 +96,22 @@ rcl_init_options_t init_options;
 rclc_executor_t executor;
 
 int Brush;
+int Water;
 int Servo_switch = 0;
 int BrushUD_mode = 0;
 int prev_Servo = 0;
 uint64_t a = 0;
 
+PWM WaterPump;
 PWM BrushMTR;
 PWM BrushUD;
+PWM BrushUD2;
+int Omron;
+static uint32_t timestamp_servo  = 0;
+static uint32_t timestamp_servo2  = 0;
+static uint32_t timestamp_servo3  = 0;
+static uint32_t timestamp_servo4  = 0;
+static uint32_t timestamp_omron  = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -110,12 +125,14 @@ void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 void BrusheMotorControlled();
-void BrushUpDownControlled();
+void WaterPumpControlled();
 void BrushUpDownMode();
+void Omron_check();
 
 void timer_callback(rcl_timer_t * timer, int64_t last_call_time);
 void subscription_callback_servo(const void * msgin);
 void subscription_callback_Brush(const void * msgin);
+void subscription_callback_Water(const void * msgin);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -158,9 +175,14 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   PWM_init(&BrushMTR, &htim2, TIM_CHANNEL_1);
-  PWM_init(&BrushUD, &htim3, TIM_CHANNEL_1);
+  PWM_init(&WaterPump, &htim2, TIM_CHANNEL_2);
+  PWM_init(&BrushUD2, &htim3, TIM_CHANNEL_1);
+  PWM_init(&BrushUD, &htim3, TIM_CHANNEL_2);
+
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -355,6 +377,10 @@ static void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
@@ -463,10 +489,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7|GPIO_PIN_9, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_7|GPIO_PIN_9|GPIO_PIN_10, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -474,8 +497,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA7 PA9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_9;
+  /*Configure GPIO pins : PA0 PA7 PA9 PA10 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_7|GPIO_PIN_9|GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -486,13 +509,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PB6 */
-  GPIO_InitStruct.Pin = GPIO_PIN_6;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
@@ -517,8 +533,9 @@ void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
 {
 	if (timer != NULL) {
 		BrusheMotorControlled();
-		BrushUpDownControlled();
 		BrushUpDownMode();
+		Omron_check();
+		WaterPumpControlled();
 	}
 	rcl_ret_t ret = rcl_publish(&publisher, &msg_pub, NULL);
 	if (ret != RCL_RET_OK)
@@ -539,56 +556,139 @@ void BrusheMotorControlled()
 		PWM_write_duty(&BrushMTR, 2000, 0);
 	}
 }
-void BrushUpDownControlled()
+void WaterPumpControlled()
 {
-	if (BrushUD_mode == 1)
+	if (Water)
 	{
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, RESET);
-		PWM_write_duty(&BrushUD, 2000, 100);
-	}
-	else if (BrushUD_mode == 2)
-	{
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, SET);
-		PWM_write_duty(&BrushUD, 2000, 100);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, RESET);
+		PWM_write_duty(&WaterPump, 2000, 100);
 	}
 	else
 	{
-		PWM_write_duty(&BrushUD, 2000, 0);
+		PWM_write_duty(&WaterPump, 2000, 0);
 	}
 }
 void BrushUpDownMode()
 {
-	static uint64_t brush_timestamp = 0;
-	static uint64_t time_period = 500;
-	if (Servo_switch && Servo_switch != prev_Servo){
-		BrushUD_mode = 1;
-		brush_timestamp = HAL_GetTick();
+	// PA10 DIR1 , PA4 PWM1
+	// PA7 DIR2 ,PA6 PWM2
+
+	if (Servo_switch == 1)
+	{
+		if (HAL_GetTick() < timestamp_servo + 500)
+		{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 1);
+			PWM_write_duty(&BrushUD, 998, 50);
+
+		}
+		else{
+			Servo_switch = 0;
+			timestamp_servo = HAL_GetTick();
+		}
 	}
-	else if (Servo_switch != prev_Servo){
-		BrushUD_mode = 2;
-		brush_timestamp = HAL_GetTick();
+	else if (Servo_switch == -1)
+	{
+//		static uint32_t timestamp_servo2  = 0;
+
+		if (HAL_GetTick() < timestamp_servo2 + 500)
+		{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 0);
+			PWM_write_duty(&BrushUD, 998, 50);
+
+		}
+		else{
+			Servo_switch = 0;
+			timestamp_servo2 = HAL_GetTick();
+		}
 	}
-	else if ((BrushUD_mode == 1 || BrushUD_mode == 2) && HAL_GetTick() - brush_timestamp > time_period){
-		BrushUD_mode = 0;
-		brush_timestamp = HAL_GetTick();
+	else if (Servo_switch == 2)
+	{
+//		static uint32_t timestamp_servo3  = 0;
+
+		if (HAL_GetTick() < timestamp_servo3 + 500)
+		{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 0);
+			PWM_write_duty(&BrushUD2, 998, 50);
+
+		}
+		else{
+			Servo_switch = 0;
+			timestamp_servo3 = HAL_GetTick();
+		}
+	}
+	else if(Servo_switch == -2)
+	{
+//		static uint32_t timestamp_servo4  = 0;
+
+		if (HAL_GetTick() < timestamp_servo4 + 500)
+		{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
+			PWM_write_duty(&BrushUD2, 998, 50);
+
+		}
+		else{
+			Servo_switch = 0;
+			timestamp_servo4 = HAL_GetTick();
+		}
+	}
+	else{
+		timestamp_servo = HAL_GetTick();
+		timestamp_servo2 = HAL_GetTick();
+		timestamp_servo3 = HAL_GetTick();
+		timestamp_servo4 = HAL_GetTick();
+		PWM_write_duty(&BrushUD2, 998, 0);
+		PWM_write_duty(&BrushUD, 998, 0);
 	}
 
-	prev_Servo = Servo_switch;
+}
 
+void Omron_check()
+{
+	if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8) == 1)
+	{
+		if (HAL_GetTick() > timestamp_omron + 2000){
+			std_msgs__msg__Int32 msg;
+
+			// Set message value
+			msg.data = 1;
+			Omron = 1;
+			// Publish message
+			rcl_publish(&omron_publisher, &msg, NULL);
+			timestamp_omron = HAL_GetTick();
+		}
+	}
+	else
+	{
+		timestamp_omron  = HAL_GetTick();
+		std_msgs__msg__Int32 msg;
+
+		// Set message value
+		msg.data = 0;
+		Omron = 0;
+		// Publish message
+		rcl_publish(&omron_publisher, &msg, NULL);
+	}
 }
 
 void subscription_callback_servo(const void * msgin)
 {
 	const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 	Servo_switch = msg->data;
-
+	// 0 = do nothing
+	// 1 and -1 , 1 == 1 up , -1 == 1 down
+	// 2 and -2
 }
 
 void subscription_callback_Brush(const void * msgin)
 {
 	const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 	Brush = msg->data;
+}
 
+void subscription_callback_Water(const void * msgin)
+{
+	const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
+	Water = msg->data;
 }
 /* USER CODE END 4 */
 
@@ -649,6 +749,12 @@ void StartDefaultTask(void *argument)
 			ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
 			"cubemx_publisher_Brush");
 
+		rclc_subscription_init_default(
+			&subscriber_Water,
+			&node,
+			ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+			"cubemx_publisher_Water");
+
 		// create publisher
 		rclc_publisher_init_default(
 			&publisher,
@@ -656,14 +762,21 @@ void StartDefaultTask(void *argument)
 			ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
 			"cubemx_publisher");
 
+		rclc_publisher_init_default(
+			&omron_publisher,
+			&node,
+			ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+			"cubemx_publisher_Omron");
+
 		msg_pub.data = 0;
 
 		// Initialize the executor
 		executor = rclc_executor_get_zero_initialized_executor();
-		rclc_executor_init(&executor, &support.context, 3, &allocator);
+		rclc_executor_init(&executor, &support.context, 4, &allocator);
 		rclc_executor_add_timer(&executor, &timer);
 		rclc_executor_add_subscription(&executor, &subscriber_servo, &msg_servo, subscription_callback_servo, ON_NEW_DATA);
 		rclc_executor_add_subscription(&executor, &subscriber_Brush, &msg_Brush, subscription_callback_Brush, ON_NEW_DATA);
+		rclc_executor_add_subscription(&executor, &subscriber_Water, &msg_Water, subscription_callback_Water, ON_NEW_DATA);
 		rclc_executor_spin(&executor);
 
 		for(;;)
