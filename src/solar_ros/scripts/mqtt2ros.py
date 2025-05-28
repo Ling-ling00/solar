@@ -62,13 +62,13 @@ class mqtt2ros(Node):
             B_msg = Int32()
             B_msg.data = int(0)
             self.publisher_B.publish(B_msg)
-            self.publisher_.publish(ros_message)
             S_msg = Int32()
             S_msg.data = int(0)
             self.publisher_S.publish(S_msg)
             L_msg = Float32MultiArray()
             L_msg.data = [float(0), float(0), float(0)]
             self.publisher_L.publish(L_msg)
+            self.publisher_.publish(ros_message)
 
         elif int(split_msg[0]) == 0 :
             L_msg = Float32MultiArray()
