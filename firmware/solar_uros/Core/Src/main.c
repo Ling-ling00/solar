@@ -44,7 +44,8 @@ typedef StaticTask_t osStaticThreadDef_t;
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define EEPROM_ADDR 0x48
+#define EEPROM_ADDR2 0x40
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -53,6 +54,13 @@ typedef StaticTask_t osStaticThreadDef_t;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c1;
+I2C_HandleTypeDef hi2c3;
+DMA_HandleTypeDef hdma_i2c1_rx;
+DMA_HandleTypeDef hdma_i2c1_tx;
+DMA_HandleTypeDef hdma_i2c3_rx;
+DMA_HandleTypeDef hdma_i2c3_tx;
+
 UART_HandleTypeDef hlpuart1;
 DMA_HandleTypeDef hdma_lpuart1_tx;
 DMA_HandleTypeDef hdma_lpuart1_rx;
@@ -112,6 +120,20 @@ static uint32_t timestamp_servo2  = 0;
 static uint32_t timestamp_servo3  = 0;
 static uint32_t timestamp_servo4  = 0;
 static uint32_t timestamp_omron  = 0;
+
+static uint64_t timestamp = 0;
+uint8_t eepromExampleWriteFlag = 0;
+uint8_t eepromExampleReadFlag = 0;
+uint8_t eepromDataReadBack[2];
+char check[17] = {};
+uint64_t encoder = 0;
+
+uint8_t eepromExampleWriteFlag2 = 0;
+uint8_t eepromExampleReadFlag2 = 0;
+uint8_t eepromDataReadBack2[2];
+char check2[17] = {};
+uint64_t encoder2 = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -121,6 +143,8 @@ static void MX_DMA_Init(void);
 static void MX_LPUART1_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_I2C1_Init(void);
+static void MX_I2C3_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -173,6 +197,8 @@ int main(void)
   MX_LPUART1_UART_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_I2C1_Init();
+  MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
   PWM_init(&BrushMTR, &htim2, TIM_CHANNEL_1);
   PWM_init(&WaterPump, &htim2, TIM_CHANNEL_2);
@@ -276,6 +302,102 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.Timing = 0x40B285C2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Analogue filter
+  */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Digital filter
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief I2C3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C3_Init(void)
+{
+
+  /* USER CODE BEGIN I2C3_Init 0 */
+
+  /* USER CODE END I2C3_Init 0 */
+
+  /* USER CODE BEGIN I2C3_Init 1 */
+
+  /* USER CODE END I2C3_Init 1 */
+  hi2c3.Instance = I2C3;
+  hi2c3.Init.Timing = 0x40B285C2;
+  hi2c3.Init.OwnAddress1 = 0;
+  hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c3.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c3.Init.OwnAddress2 = 0;
+  hi2c3.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c3.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c3.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Analogue filter
+  */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c3, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Digital filter
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c3, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C3_Init 2 */
+
+  /* USER CODE END I2C3_Init 2 */
+
 }
 
 /**
@@ -468,6 +590,18 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+  /* DMA1_Channel3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+  /* DMA1_Channel4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
+  /* DMA1_Channel6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
 
 }
 
@@ -536,6 +670,48 @@ void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
 		BrushUpDownMode();
 		Omron_check();
 		WaterPumpControlled();
+
+
+		eepromExampleReadFlag = 1;
+		eepromExampleReadFlag2 = 1;
+	  EEPROMReadExample(eepromDataReadBack);
+	  EEPROMReadExample2(eepromDataReadBack2);
+		timestamp = HAL_GetTick();
+	  for (int i = 0; i < 16; i++) {
+		  // Select byte: 0 for i=0..7, 1 for i=8..15
+		  uint8_t byteIndex = i / 8;
+		  uint8_t bitIndex = 7 - (i % 8);  // MSB first
+
+		  check[i] = ((eepromDataReadBack[byteIndex] >> bitIndex) & 0x01) ? '1' : '0';
+		  check2[i] = ((eepromDataReadBack2[byteIndex] >> bitIndex) & 0x01) ? '1' : '0';
+	  }
+	  check[16] = '\0';  // Null-terminate
+	  check2[16] = '\0';
+	  encoder = ((check[11] - 48) * 1000 ) + ((check[12] - 48) * 800 ) + ((check[13] - 48) * 400 )
+		+ ((check[14] - 48) * 200 ) + ((check[15] - 48) * 100 ) + ((check[0] - 48) * 80 ) +
+		((check[1] - 48) * 40 ) + ((check[2] - 48) * 20 ) + ((check[3] - 48) * 10 ) +
+		((check[4] - 48) * 8 ) + ((check[5] - 48) * 4 ) + ((check[6] - 48) * 2 )
+	 + ((check[7] - 48) * 1 ) ;
+	  encoder2 = ((check2[11] - 48) * 1000 ) + ((check2[12] - 48) * 800 ) + ((check2[13] - 48) * 400 )
+				+ ((check2[14] - 48) * 200 ) + ((check2[15] - 48) * 100 ) + ((check2[0] - 48) * 80 ) +
+				((check2[1] - 48) * 40 ) + ((check2[2] - 48) * 20 ) + ((check2[3] - 48) * 10 ) +
+				((check2[4] - 48) * 8 ) + ((check2[5] - 48) * 4 ) + ((check2[6] - 48) * 2 )
+			 + ((check2[7] - 48) * 1 ) ;
+
+	  //		((check[11] - 48) * 1000 )
+	  //		((check[12] - 48) * 800 )
+	  //		((check[13] - 48) * 400 )
+	  //		((check[14] - 48) * 200 )
+	  //		((check[15] - 48) * 100 )
+	  //		((check[0] - 48) * 80 )
+	  //      ((check[1] - 48) * 40 )
+	  //		((check[2] - 48) * 20 )
+	  //		((check[3] - 48) * 10 )
+	  //	    ((check[4] - 48) * 8 )
+	  //	    ((check[5] - 48) * 4 )
+	  //	    ((check[6] - 48) * 2 )
+	  //	    ((check[7] - 48) * 1 )
+
 	}
 	rcl_ret_t ret = rcl_publish(&publisher, &msg_pub, NULL);
 	if (ret != RCL_RET_OK)
@@ -575,10 +751,12 @@ void BrushUpDownMode()
 
 	if (Servo_switch == 1)
 	{
-		if (HAL_GetTick() < timestamp_servo + 500)
+		if (HAL_GetTick() < timestamp_servo + 200)
 		{
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 1);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 1); // 1 == up , -1 == down
 			PWM_write_duty(&BrushUD, 998, 50);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 0);
+			PWM_write_duty(&BrushUD2, 998, 50);
 
 		}
 		else{
@@ -590,10 +768,12 @@ void BrushUpDownMode()
 	{
 //		static uint32_t timestamp_servo2  = 0;
 
-		if (HAL_GetTick() < timestamp_servo2 + 500)
+		if (HAL_GetTick() < timestamp_servo2 + 200)
 		{
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 0);
 			PWM_write_duty(&BrushUD, 998, 50);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
+			PWM_write_duty(&BrushUD2, 998, 50);
 
 		}
 		else{
@@ -603,32 +783,54 @@ void BrushUpDownMode()
 	}
 	else if (Servo_switch == 2)
 	{
-//		static uint32_t timestamp_servo3  = 0;
-
-		if (HAL_GetTick() < timestamp_servo3 + 500)
+		if (HAL_GetTick() < timestamp_servo + 200)
 		{
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 0);
-			PWM_write_duty(&BrushUD2, 998, 50);
-
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 1); // 1 == up , -1 == down
+			PWM_write_duty(&BrushUD, 998, 50);
 		}
 		else{
 			Servo_switch = 0;
-			timestamp_servo3 = HAL_GetTick();
+			timestamp_servo = HAL_GetTick();
 		}
 	}
-	else if(Servo_switch == -2)
+	else if (Servo_switch == -2)
 	{
-//		static uint32_t timestamp_servo4  = 0;
+//		static uint32_t timestamp_servo2  = 0;
 
-		if (HAL_GetTick() < timestamp_servo4 + 500)
+		if (HAL_GetTick() < timestamp_servo2 + 200)
+		{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 0);
+			PWM_write_duty(&BrushUD, 998, 50);
+		}
+		else{
+			Servo_switch = 0;
+			timestamp_servo2 = HAL_GetTick();
+		}
+	}
+	else if (Servo_switch == 3)
+	{
+		if (HAL_GetTick() < timestamp_servo + 200)
+		{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 0); // 1 == up , -1 == down
+			PWM_write_duty(&BrushUD2, 998, 50);
+		}
+		else{
+			Servo_switch = 0;
+			timestamp_servo = HAL_GetTick();
+		}
+	}
+	else if (Servo_switch == -3)
+	{
+//		static uint32_t timestamp_servo2  = 0;
+
+		if (HAL_GetTick() < timestamp_servo2 + 200)
 		{
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
 			PWM_write_duty(&BrushUD2, 998, 50);
-
 		}
 		else{
 			Servo_switch = 0;
-			timestamp_servo4 = HAL_GetTick();
+			timestamp_servo2 = HAL_GetTick();
 		}
 	}
 	else{
@@ -689,6 +891,27 @@ void subscription_callback_Water(const void * msgin)
 {
 	const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 	Water = msg->data;
+}
+
+void EEPROMReadExample(uint8_t *Rdata) {
+	if (eepromExampleReadFlag && hi2c1.State == HAL_I2C_STATE_READY) {
+//		HAL_I2C_Mem_Read_IT(&hi2c1, 0x40, 0x12, I2C_MEMADD_SIZE_8BIT, Rdata, 2);
+		HAL_I2C_Mem_Read_IT(&hi2c1, EEPROM_ADDR, 0x12, I2C_MEMADD_SIZE_8BIT, Rdata, 2);
+//		HAL_I2C_Mem_Read_IT(&hi2c1, EEPROM_ADDR, 0x12, I2C_MEMADD_SIZE_16BIT, Rdata, 2);
+		eepromExampleReadFlag = 0;
+
+
+	}
+}
+void EEPROMReadExample2(uint8_t *Rdata) {
+	if (eepromExampleReadFlag2 && hi2c3.State == HAL_I2C_STATE_READY) {
+//		HAL_I2C_Mem_Read_IT(&hi2c1, 0x40, 0x12, I2C_MEMADD_SIZE_8BIT, Rdata, 2);
+		HAL_I2C_Mem_Read_IT(&hi2c3, EEPROM_ADDR2, 0x12, I2C_MEMADD_SIZE_8BIT, Rdata, 2);
+//		HAL_I2C_Mem_Read_IT(&hi2c1, EEPROM_ADDR, 0x12, I2C_MEMADD_SIZE_16BIT, Rdata, 2);
+		eepromExampleReadFlag2 = 0;
+
+
+	}
 }
 /* USER CODE END 4 */
 
