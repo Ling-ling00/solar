@@ -36,7 +36,7 @@ class LidarReadNode(Node):
         self.isActive = 1
         self.f_mid_pose = 0
         self.b_mid_pose = 0
-        self.look_ahead = 2.0
+        self.look_ahead = 1.0
         self.R = 0.05
         self.L = 1.59
 
@@ -211,10 +211,7 @@ class LidarReadNode(Node):
         v_r = self.max_speed + (angular_z * self.L / 2.0)
         v_l = self.max_speed - (angular_z * self.L / 2.0)
 
-        w_r = (v_r / self.R) * 60.0 / (2.0 * np.pi) # rpm
-        w_l = (v_l / self.R) * 60.0 / (2.0 * np.pi) # rpm
-
-        msg.data = [w_l*self.direction, w_r*self.direction]
+        msg.data = [v_l*self.direction, v_r*self.direction]
         self.cmd_vel_publisher.publish(msg)
         self.get_logger().info(f'Publishing speed data =  {v_l, v_r}')
 
