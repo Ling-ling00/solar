@@ -8,7 +8,7 @@ import os
 import subprocess
 
 # Define the MQTT settings
-BROKER = "broker.mqtt-dashboard.com"
+BROKER = "broker.emqx.io"
 PORT = 1883
 CLIENT_ID = "ros2-mqtt-bridge"
 TOPIC_SUBSCRIBE = "test/topic/solar/fibo"
