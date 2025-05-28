@@ -71,7 +71,9 @@ class mqtt2ros(Node):
             self.publisher_L.publish(L_msg)
 
         elif int(split_msg[0]) == 0 :
-            pass
+            L_msg = Float32MultiArray()
+            L_msg.data = [float(1), float(split_msg[1]), float(split_msg[2])]
+            self.publisher_L.publish(L_msg)
         elif int(split_msg[0]) == 1 :
             ros_message = Float32MultiArray()
             ros_message.data = [float(split_msg[1]), float(split_msg[2])]
@@ -91,11 +93,6 @@ class mqtt2ros(Node):
             self.get_logger().info("Reset command received. Closing other terminals and launching drive.sh.")
             self.close_other_terminals()
             self.launch_new_terminal()
-
-        elif int(split_msg[0]) == 3:
-            L_msg = Float32MultiArray()
-            L_msg.data = [float(1), float(split_msg[1]), float(split_msg[2])]
-            self.publisher_L.publish(L_msg)
 
     def feedback_odr_callback(self,msg:Float32MultiArray):
         # print(msg.data)

@@ -33,7 +33,7 @@ class LidarReadNode(Node):
         self.kp = 2.0
         self.deg = [270, 90]
         self.lidar_error = 0.01
-        self.isActive = 1
+        self.isActive = 0
         self.f_mid_pose = 0
         self.b_mid_pose = 0
         self.look_ahead = 1.0
@@ -46,8 +46,9 @@ class LidarReadNode(Node):
 
     def state_callback(self, msg:Float32MultiArray):
         self.isActive = msg.data[0]
-        self.max_speed = msg.data[1]
-        self.kp = msg.data[2]
+        self.max_speed = abs(msg.data[1])
+        self.direction = int(msg.data[1]/abs(msg.data[1]))
+        self.look_ahead = msg.data[2]
 
     def publish_lidar_data(self, msg:LaserScan, deg, lim_deg, side):
         scan = msg
@@ -183,9 +184,12 @@ class LidarReadNode(Node):
         self.publish_lidar_data(msg, self.deg, lim_raw, "back")
 
     def cmd_pub(self):
-        robot_x = (self.f_mid_pose + self.b_mid_pose)/2
-        robot_theta = np.arcsin((self.f_mid_pose-self.b_mid_pose)/self.lidar_distance)
-
+        if self.direction == 1:
+            robot_x = (self.f_mid_pose + self.b_mid_pose)/2
+            robot_theta = np.arcsin((self.f_mid_pose-self.b_mid_pose)/self.lidar_distance)
+        elif self.direction == -1:
+            robot_x = (self.f_mid_pose + self.b_mid_pose)/2
+            robot_theta = np.arcsin((self.b_mid_pose-self.f_mid_pose)/self.lidar_distance)
         print(robot_x, robot_theta)
 
         target_x = 0
@@ -211,9 +215,12 @@ class LidarReadNode(Node):
         v_r = self.max_speed + (angular_z * self.L / 2.0)
         v_l = self.max_speed - (angular_z * self.L / 2.0)
 
-        msg.data = [v_l*self.direction, v_r*self.direction]
+        if self.direction == 1:
+            msg.data = [v_l, v_r]
+        elif self.direction == -1:
+            msg.data = [v_r*-1, v_l*-1]
         self.cmd_vel_publisher.publish(msg)
-        self.get_logger().info(f'Publishing speed data =  {v_l, v_r}')
+        self.get_logger().info(f'Publishing speed data =  {msg.data}')
 
 
 def main(args=None):
