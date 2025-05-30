@@ -3,7 +3,7 @@
 # from solar_ros.dummy_module import dummy_function, dummy_var
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float32MultiArray,Int32
 
 import SoloPy as solo
 import time
@@ -14,15 +14,18 @@ class SoloRNode(Node):
         super().__init__('solo_node_R')
         self.initial_solo()
         self.create_timer(0.01, self.solo_loop)
+        self.create_subscription(Int32,"/stop",self.stop_callback,10)
         self.publisher_feedback = self.create_publisher(Float32MultiArray, "/feedback_odr_R", 10)
         self.publisher_L = self.create_publisher(Float32MultiArray, "/lidar_state", 10)
         self.create_subscription(Float32MultiArray, "/cmd_vel", self.velo_callback, 10)
         self.create_subscription(Float32MultiArray, "/feedback_odr_L", self.feedback_callback, 10)
         self.right_speed = 0
+        
         self.count = 0
         self.start = 0
         self.feedback_L = 0.0
         self.feedback_R = 0.0
+        self.stop = 0
         
     def initial_solo(self):
         pwmFrequency = 40
@@ -59,9 +62,9 @@ class SoloRNode(Node):
         # self.solo_sensorless(self.solo_R)
         # self.solo_R.set_feedback_control_mode(2)
         self.solo_hal_speed(self.solo_R)
-        self.solo_R.set_motion_profile_mode(solo.MotionProfileMode.TIME_OPTIMAL_STCURVE)
-        self.solo_R.set_motion_profile_variable1(18)
-        self.solo_R.set_motion_profile_variable2(100)
+        self.solo_R.set_motion_profile_mode(solo.MotionProfileMode.STEP_RAMP_RESPNSE)
+        # self.solo_R.set_motion_profile_variable1(18)
+        # self.solo_R.set_motion_profile_variable2(100)
         self.solo_R.motor_parameters_identification(solo.Action.START)
         # self.solo_R.set_speed_acceleration_value(20.0)
         # self.solo_R.set_speed_deceleration_value(1000.0)
@@ -144,7 +147,15 @@ class SoloRNode(Node):
             # L_msg.data = [float(0), float(0), float(0)]
             # self.publisher_L.publish(L_msg)
 
+    def stop_callback(self,msg:Int32):
+        self.stop = msg.data
+        print(self.stop)
+
     def velo_callback(self, msg:Float32MultiArray):
+        if self.stop == 0:
+            self.solo_R.set_speed_reference(0)
+            print(f"set speed to {0}")
+            return
         self.right_speed = msg.data[1]/0.02*60
         if self.feedback_L == 1.0 and self.feedback_R == 1.0:
             if self.right_speed > 0:

@@ -23,10 +23,13 @@ class mqtt2ros(Node):
         self.publisher_B = self.create_publisher(Int32, "/cubemx_publisher_Brush", 10)
         self.publisher_S = self.create_publisher(Int32, "/cubemx_publisher_servo", 10)
         self.publisher_L = self.create_publisher(Float32MultiArray, "/lidar_state", 10)
+        self.publisher_Stop = self.create_publisher(Int32,"/stop",10)
         self.get_logger().info("ROS 2 Node initialized, setting up MQTT client...")
-
-        self.create_subscription(Float32MultiArray, "/feedback_odr", self.feedback_odr_callback, 10)
         
+        self.create_subscription(Float32MultiArray, "/feedback_odr", self.feedback_odr_callback, 10)
+        msg = Int32()
+        msg.data = 0
+        self.publisher_Stop.publish(msg=msg)
 
         # Initialize MQTT client
         self.mqtt_client = mqtt.Client(client_id=CLIENT_ID)
@@ -57,37 +60,63 @@ class mqtt2ros(Node):
         split_msg = mqtt_message.split()
 
         if int(split_msg[0]) == 9 :
+
+            msg = Int32()
+            msg.data = 0
+            self.publisher_Stop.publish(msg)
+
             ros_message = Float32MultiArray()
             ros_message.data = [float(0), float(0)]
+            self.publisher_.publish(ros_message)
+
             B_msg = Int32()
             B_msg.data = int(0)
             self.publisher_B.publish(B_msg)
+
             S_msg = Int32()
             S_msg.data = int(0)
             self.publisher_S.publish(S_msg)
+
             L_msg = Float32MultiArray()
             L_msg.data = [float(0), float(0), float(0)]
             self.publisher_L.publish(L_msg)
-            self.publisher_.publish(ros_message)
+            
 
         elif int(split_msg[0]) == 0 :
+
+            msg = Int32()
+            msg.data = 1
+            self.publisher_Stop.publish(msg=msg)
+
             L_msg = Float32MultiArray()
             L_msg.data = [float(1), float(split_msg[1]), float(split_msg[2])]
             self.publisher_L.publish(L_msg)
+
+
         elif int(split_msg[0]) == 1 :
-            ros_message = Float32MultiArray()
-            ros_message.data = [float(split_msg[1]), float(split_msg[2])]
-            B_msg = Int32()
-            B_msg.data = int(split_msg[3])
-            self.publisher_B.publish(B_msg)
-            self.publisher_.publish(ros_message)
-            S_msg = Int32()
-            S_msg.data = int(split_msg[4])
-            self.publisher_S.publish(S_msg)
+
+            msg = Int32()
+            msg.data = 1
+            self.publisher_Stop.publish(msg=msg)
+
             L_msg = Float32MultiArray()
             L_msg.data = [float(0), float(0), float(0)]
             self.publisher_L.publish(L_msg)
+
+            ros_message = Float32MultiArray()
+            ros_message.data = [float(split_msg[1]), float(split_msg[2])]
+
+            B_msg = Int32()
+            B_msg.data = int(split_msg[3])
+            self.publisher_B.publish(B_msg)
+
+            S_msg = Int32()
+            S_msg.data = int(split_msg[4])
+            self.publisher_S.publish(S_msg)
+            
+            self.publisher_.publish(ros_message)
             self.get_logger().info(f"Republished to ROS topic: 'ros_topic'")
+
 
         elif int(split_msg[0]) == 2 : #### Reset 
             self.get_logger().info("Reset command received. Closing other terminals and launching drive.sh.")
