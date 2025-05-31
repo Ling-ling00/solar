@@ -28,11 +28,11 @@ ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
   scripts/dummy_script.py
-  scripts/lidar_read.py
-  scripts/lidar_read_sim.py
-  scripts/robot_control.py
+  scripts/lidar_distance_check.py
+  # scripts/robot_control.py
   scripts/mqtt2ros.py
-  scripts/drive.py
+  scripts/drive_solo_L.py
+  scripts/drive_solo_R.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

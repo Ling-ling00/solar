@@ -13,7 +13,7 @@ def generate_launch_description():
 
     lidar_read = Node(
         package = package_name,
-        executable = 'lidar_read.py',
+        executable = 'lidar_distance_check.py',
         name = 'lidar'
     )
     
@@ -23,9 +23,15 @@ def generate_launch_description():
     #     name = 'robot'
     # )
 
-    robot = Node(
+    robot_L = Node(
         package = package_name,
-        executable = 'drive.py',
+        executable = 'drive_solo_L.py',
+        name = 'robot'
+    )
+
+    robot_R = Node(
+        package = package_name,
+        executable = 'drive_solo_R.py',
         name = 'robot'
     )
 
@@ -41,7 +47,7 @@ def generate_launch_description():
                 os.path.join(
                     get_package_share_directory("sllidar_ros2"),
                     "launch",
-                    "view_sllidar_c1_launch.py"
+                    "custom_sllidar_c1_launch.py"
                 )
             ]
         )
@@ -49,7 +55,8 @@ def generate_launch_description():
     
     launch_description.add_action(lidar)
     launch_description.add_action(lidar_read)
-    launch_description.add_action(robot)
+    launch_description.add_action(robot_L)
+    launch_description.add_action(robot_R)
     launch_description.add_action(mqtt)
 
     return launch_description
