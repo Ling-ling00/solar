@@ -3522,7 +3522,7 @@ void EEPROMReadExample(uint8_t *Rdata) {
  8001e16:	9300      	str	r3, [sp, #0]
  8001e18:	2301      	movs	r3, #1
  8001e1a:	2212      	movs	r2, #18
- 8001e1c:	2148      	movs	r1, #72	@ 0x48
+ 8001e1c:	2140      	movs	r1, #64	@ 0x40
  8001e1e:	4806      	ldr	r0, [pc, #24]	@ (8001e38 <EEPROMReadExample+0x44>)
  8001e20:	f002 f97e 	bl	8004120 <HAL_I2C_Mem_Read_IT>
 //		HAL_I2C_Mem_Read_IT(&hi2c1, EEPROM_ADDR, 0x12, I2C_MEMADD_SIZE_16BIT, Rdata, 2);
@@ -3566,7 +3566,7 @@ void EEPROMReadExample2(uint8_t *Rdata) {
  8001e5e:	9300      	str	r3, [sp, #0]
  8001e60:	2301      	movs	r3, #1
  8001e62:	2212      	movs	r2, #18
- 8001e64:	2140      	movs	r1, #64	@ 0x40
+ 8001e64:	2148      	movs	r1, #72	@ 0x48
  8001e66:	4806      	ldr	r0, [pc, #24]	@ (8001e80 <EEPROMReadExample2+0x44>)
  8001e68:	f002 f95a 	bl	8004120 <HAL_I2C_Mem_Read_IT>
 //		HAL_I2C_Mem_Read_IT(&hi2c1, EEPROM_ADDR, 0x12, I2C_MEMADD_SIZE_16BIT, Rdata, 2);

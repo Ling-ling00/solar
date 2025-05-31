@@ -44,8 +44,8 @@ typedef StaticTask_t osStaticThreadDef_t;
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define EEPROM_ADDR 0x48
-#define EEPROM_ADDR2 0x40
+#define EEPROM_ADDR 0x40
+#define EEPROM_ADDR2 0x48
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -90,11 +90,23 @@ std_msgs__msg__Int32 msg_Brush;
 rcl_subscription_t subscriber_Water;
 std_msgs__msg__Int32 msg_Water;
 
+rcl_subscription_t subscriber_encoder1;
+std_msgs__msg__Int32 msg_encoder1;
+
+rcl_subscription_t subscriber_encoder2;
+std_msgs__msg__Int32 msg_encoder2;
+
 rcl_publisher_t publisher;
 std_msgs__msg__Int32 msg_pub;
 
 rcl_publisher_t omron_publisher;
 std_msgs__msg__Int32 msg_Omron;
+
+rcl_publisher_t encoder1_publisher;
+//std_msgs__msg__Int32 msg_encoder1;
+
+rcl_publisher_t encoder2_publisher;
+//std_msgs__msg__Int32 msg_encoder2;
 
 rcl_timer_t timer;
 rclc_support_t support;
@@ -110,11 +122,14 @@ int BrushUD_mode = 0;
 int prev_Servo = 0;
 uint64_t a = 0;
 
+
 PWM WaterPump;
 PWM BrushMTR;
 PWM BrushUD;
 PWM BrushUD2;
 int Omron;
+
+
 static uint32_t timestamp_servo  = 0;
 static uint32_t timestamp_servo2  = 0;
 static uint32_t timestamp_servo3  = 0;
@@ -128,11 +143,15 @@ uint8_t eepromDataReadBack[2];
 char check[17] = {};
 uint64_t encoder = 0;
 
+
 uint8_t eepromExampleWriteFlag2 = 0;
 uint8_t eepromExampleReadFlag2 = 0;
 uint8_t eepromDataReadBack2[2];
 char check2[17] = {};
 uint64_t encoder2 = 0;
+
+uint64_t encoder1_order = 0;
+uint64_t encoder2_order = 0;
 
 /* USER CODE END PV */
 
@@ -150,8 +169,10 @@ void StartDefaultTask(void *argument);
 /* USER CODE BEGIN PFP */
 void BrusheMotorControlled();
 void WaterPumpControlled();
-void BrushUpDownMode();
+void BrushUpDownMode_manual();
+void BrushUpDownMode_auto();
 void Omron_check();
+void encoder_check();
 
 void timer_callback(rcl_timer_t * timer, int64_t last_call_time);
 void subscription_callback_servo(const void * msgin);
@@ -667,7 +688,8 @@ void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
 {
 	if (timer != NULL) {
 		BrusheMotorControlled();
-		BrushUpDownMode();
+		BrushUpDownMode_manual();
+		BrushUpDownMode_auto();
 		Omron_check();
 		WaterPumpControlled();
 
@@ -712,6 +734,9 @@ void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
 	  //	    ((check[6] - 48) * 2 )
 	  //	    ((check[7] - 48) * 1 )
 
+	  encoder_check();
+
+
 	}
 	rcl_ret_t ret = rcl_publish(&publisher, &msg_pub, NULL);
 	if (ret != RCL_RET_OK)
@@ -719,7 +744,76 @@ void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
 		NVIC_SystemReset();
 	}
 }
+void BrushUpDownMode_auto()
+{
+	if (encoder - encoder1_order > 0) // threshold implement
+		{
+			if (HAL_GetTick() < timestamp_servo + 200)
+			{
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 1); // 1 == up , -1 == down
+				PWM_write_duty(&BrushUD, 998, 50);
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 0);
+				PWM_write_duty(&BrushUD2, 998, 50);
 
+			}
+			else{
+
+				timestamp_servo = HAL_GetTick();
+			}
+		}
+		else if (encoder - encoder1_order < 0)
+		{
+	//		static uint32_t timestamp_servo2  = 0;
+
+			if (HAL_GetTick() < timestamp_servo2 + 200)
+			{
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 0);
+				PWM_write_duty(&BrushUD, 998, 50);
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, 1);
+				PWM_write_duty(&BrushUD2, 998, 50);
+
+			}
+			else{
+
+				timestamp_servo2 = HAL_GetTick();
+			}
+		}
+		else if (encoder2 - encoder2_order > 0)
+		{
+			if (HAL_GetTick() < timestamp_servo + 200)
+			{
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 1); // 1 == up , -1 == down
+				PWM_write_duty(&BrushUD, 998, 50);
+			}
+			else{
+				timestamp_servo = HAL_GetTick();
+			}
+		}
+		else if (encoder2 - encoder2_order < 0)
+		{
+	//		static uint32_t timestamp_servo2  = 0;
+
+			if (HAL_GetTick() < timestamp_servo2 + 200)
+			{
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 0);
+				PWM_write_duty(&BrushUD, 998, 50);
+			}
+			else{
+
+				timestamp_servo2 = HAL_GetTick();
+			}
+		}
+		else{
+			timestamp_servo = HAL_GetTick();
+			timestamp_servo2 = HAL_GetTick();
+			timestamp_servo3 = HAL_GetTick();
+			timestamp_servo4 = HAL_GetTick();
+			PWM_write_duty(&BrushUD2, 998, 0);
+			PWM_write_duty(&BrushUD, 998, 0);
+		}
+
+
+}
 void BrusheMotorControlled()
 {
 	if (Brush)
@@ -744,7 +838,7 @@ void WaterPumpControlled()
 		PWM_write_duty(&WaterPump, 2000, 0);
 	}
 }
-void BrushUpDownMode()
+void BrushUpDownMode_manual()
 {
 	// PA10 DIR1 , PA4 PWM1
 	// PA7 DIR2 ,PA6 PWM2
@@ -872,6 +966,19 @@ void Omron_check()
 	}
 }
 
+void encoder_check()
+{
+			std_msgs__msg__Int32 msg1;
+			std_msgs__msg__Int32 msg2;
+
+			// Set message value
+			msg1.data = encoder;
+			msg2.data = encoder2;
+			// Publish message
+			rcl_publish(&encoder1_publisher, &msg1, NULL);
+			rcl_publish(&encoder2_publisher, &msg2, NULL);
+}
+
 void subscription_callback_servo(const void * msgin)
 {
 	const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
@@ -891,6 +998,17 @@ void subscription_callback_Water(const void * msgin)
 {
 	const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 	Water = msg->data;
+}
+void subscription_callback_encoder1(const void * msgin)
+{
+	const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
+	encoder1_order = msg->data;
+}
+
+void subscription_callback_encoder2(const void * msgin)
+{
+	const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
+	encoder2_order = msg->data;
 }
 
 void EEPROMReadExample(uint8_t *Rdata) {
@@ -991,15 +1109,31 @@ void StartDefaultTask(void *argument)
 			ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
 			"cubemx_publisher_Omron");
 
+		rclc_publisher_init_default(
+			&encoder1_publisher,
+			&node,
+			ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+			"cubemx_publisher_encoder1");
+
+		rclc_publisher_init_default(
+			&encoder2_publisher,
+			&node,
+			ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+			"cubemx_publisher_encoder2");
+
+
 		msg_pub.data = 0;
 
 		// Initialize the executor
 		executor = rclc_executor_get_zero_initialized_executor();
-		rclc_executor_init(&executor, &support.context, 4, &allocator);
+		rclc_executor_init(&executor, &support.context, 6, &allocator);
 		rclc_executor_add_timer(&executor, &timer);
 		rclc_executor_add_subscription(&executor, &subscriber_servo, &msg_servo, subscription_callback_servo, ON_NEW_DATA);
 		rclc_executor_add_subscription(&executor, &subscriber_Brush, &msg_Brush, subscription_callback_Brush, ON_NEW_DATA);
 		rclc_executor_add_subscription(&executor, &subscriber_Water, &msg_Water, subscription_callback_Water, ON_NEW_DATA);
+
+		rclc_executor_add_subscription(&executor, &subscriber_encoder1, &msg_encoder1, subscription_callback_encoder1, ON_NEW_DATA);
+		rclc_executor_add_subscription(&executor, &subscriber_encoder2, &msg_encoder2, subscription_callback_encoder2, ON_NEW_DATA);
 		rclc_executor_spin(&executor);
 
 		for(;;)
